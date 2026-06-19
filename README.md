@@ -30,7 +30,4 @@ O projeto foi construído utilizando o ecossistema moderno do desenvolvimento h�
 * Leonardo Gabriel de Moraes Carvalho
 * Luiz Gustavo Julio Salles
 * Vinicius Azevedo de Ávila
-  
 
----
-*Desenvolvido com dedicação (e algumas xícaras de café na madrugada) no 5º período - 2026.*
