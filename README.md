@@ -1,6 +1,6 @@
 # Avalia+ 
 
-Fala, professor! Este é o **Avalia+**, o nosso aplicativo mobile desenvolvido para a disciplina de **Engenharia de Aplicações Móveis** do curso de Ciência da Computação da PUC Minas. 
+**Avalia+** é o aplicativo mobile desenvolvido para a disciplina de **Engenharia de Aplicações Móveis** do curso de Ciência da Computação da PUC Minas. 
 
 O foco principal do app é resolver um problema prático do dia a dia de gerenciamento corporativo: o controle, listagem e cadastro de colaboradores dentro de uma área administrativa.
 
