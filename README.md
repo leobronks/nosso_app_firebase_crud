@@ -28,3 +28,4 @@ Escaneie o QR Code com o app Expo Go (Android/iOS).
 
 * Leonardo Gabriel de Moraes Carvalho
 * Luiz Gustavo Julio Salles
+* Vinicius Azevedo de Ávila
