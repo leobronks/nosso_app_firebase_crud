@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, TextInput, TouchableOpacity, Text } from 'react-native';
-import { auth, db } from '../config/firebase';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export default function AlunoFormScreen({ route, navigation }) {
   const [nome, setNome] = useState('');
   const [matricula, setMatricula] = useState('');
   const [curso, setCurso] = useState('');
+  const [periodo, setPeriodo] = useState('');
   const [loading, setLoading] = useState(false);
 
   const alunoEdicao = route.params?.aluno || null;
@@ -15,11 +17,12 @@ export default function AlunoFormScreen({ route, navigation }) {
       setNome(alunoEdicao.nome);
       setMatricula(alunoEdicao.matricula);
       setCurso(alunoEdicao.curso);
+      setPeriodo(String(alunoEdicao.periodo));
     }
   }, [alunoEdicao]);
 
   const salvarAluno = async () => {
-    if (!nome || !matricula || !curso) {
+    if (!nome || !matricula || !curso || !periodo) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
       return;
     }
@@ -27,12 +30,12 @@ export default function AlunoFormScreen({ route, navigation }) {
     setLoading(true);
     try {
       if (alunoEdicao) {
-        // Modo Edição
-        await db.ref(`alunos/${alunoEdicao.id}`).update({ nome, matricula, curso });
+        // UPDATE
+        await updateDoc(doc(db, 'alunos', alunoEdicao.id), { nome, matricula, curso, periodo });
         Alert.alert('Sucesso', 'Dados do aluno atualizados!');
       } else {
-        // Modo Cadastro Novo
-        await db.ref('alunos').push({ nome, matricula, curso });
+        // CREATE
+        await addDoc(collection(db, 'alunos'), { nome, matricula, curso, periodo });
         Alert.alert('Sucesso', 'Aluno cadastrado com sucesso!');
       }
       navigation.goBack();
@@ -45,13 +48,11 @@ export default function AlunoFormScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* 🚀 A barra preta antiga com "Novo Aluno" foi COMPLETAMENTE ELIMINADA daqui! */}
-
       <View style={styles.form}>
         <Text style={styles.label}>Nome do Aluno *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Digite o nome completo"
+          placeholder="Digite o nome do aluno"
           placeholderTextColor="#a0a0a0"
           value={nome}
           onChangeText={setNome}
@@ -70,10 +71,20 @@ export default function AlunoFormScreen({ route, navigation }) {
         <Text style={styles.label}>Curso *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Digite o nome do curso"
+          placeholder="Digite o curso (ex: Medicina)"
           placeholderTextColor="#a0a0a0"
           value={curso}
           onChangeText={setCurso}
+        />
+
+        <Text style={styles.label}>Período *</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Digite o período (ex: 9)"
+          placeholderTextColor="#a0a0a0"
+          value={periodo}
+          onChangeText={setPeriodo}
+          keyboardType="numeric"
         />
 
         <TouchableOpacity style={styles.button} onPress={salvarAluno} disabled={loading}>
@@ -89,7 +100,7 @@ export default function AlunoFormScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5', // Mesmo fundo claro e limpo do protótipo
+    backgroundColor: '#f5f5f5',
   },
   form: {
     padding: 20,
@@ -116,7 +127,7 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     height: 55,
-    backgroundColor: '#003366', // Azul escuro idêntico ao padrão corporativo do QualiMed
+    backgroundColor: '#003366',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',

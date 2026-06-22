@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alerta, TextInput, TouchableOpacity, Text } from 'react-native'; 
-import { auth, db } from '../config/firebase';
+import { View, StyleSheet, Alert, TextInput, TouchableOpacity, Text } from 'react-native'; 
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -9,31 +10,27 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!email || !senha) {
-      Alerta.alert('Erro', 'Por favor, preencha todos os campos.');
+      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
     setLoading(true);
     try {
-      await auth.signInWithEmailAndPassword(email, senha);
+      await signInWithEmailAndPassword(auth, email, senha);
       navigation.replace('Main');
     } catch (error) {
-      Alerta.alert('Erro de Autenticação', error.message);
+      Alert.alert('Erro de Autenticação', error.message);
     } finally {
       setLoading(false);
     }
   };
 
   // Função para direcionar o usuário para o suporte de TI
-// Função atualizada para funcionar perfeitamente no Computador (Web) e Celular
   const handleEsqueceuSenha = () => {
-    const mensagem = 'Para recuperar ou alterar sua senha, por favor dirija-se ao setor de TI da instituição para validar suas credenciais.';
-    
-    // Se estiver rodando no navegador do PC, usa o alert comum, senão usa o nativo do celular
-    if (typeof alert !== 'undefined' && process.env.EXPO_PUBLIC_APP_PLATFORM === 'web' || true) {
-      alert(mensagem);
-    } else {
-      Alert.alert('Recuperação de Acesso', mensagem, [{ text: 'Entendido' }]);
-    }
+    Alert.alert(
+      'Recuperação de Acesso',
+      'Para recuperar ou alterar sua senha, por favor dirija-se ao setor de TI da instituição para validar suas credenciais.',
+      [{ text: 'Entendido' }]
+    );
   };
 
   return (
@@ -68,6 +65,10 @@ export default function LoginScreen({ navigation }) {
       {/* Ação adicionada para direcionar para a TI da instituição */}
       <TouchableOpacity style={styles.forgotPassword} onPress={handleEsqueceuSenha}>
         <Text style={styles.forgotPasswordText}>Esqueceu sua senha?</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.cadastroLink} onPress={() => navigation.navigate('Cadastro')}>
+        <Text style={styles.cadastroLinkText}>Não tem conta? Cadastre-se</Text>
       </TouchableOpacity>
     </View>
   );
@@ -129,6 +130,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     textDecorationLine: 'underline',
+  },
+  cadastroLink: {
+    marginTop: 10,
+    padding: 10,
+  },
+  cadastroLinkText: {
+    color: '#555555',
+    fontSize: 14,
   },
 });
 

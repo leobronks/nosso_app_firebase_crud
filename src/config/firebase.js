@@ -1,111 +1,34 @@
-// 🚀 Simulador Universal com Atualização Forçada de Exclusão e Edição
-const mockStorage = {};
-const listeners = {};
+// Configuração real do Firebase (Firestore + Authentication)
+// Pacote instalado: npm install firebase (versão 12+)
+// Usamos a API modular (firebase/app, firebase/auth, firebase/firestore),
+// que é a forma oficialmente suportada pelo Expo/Expo Go hoje.
+import { Platform } from 'react-native';
+import { initializeApp } from 'firebase/app';
+import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const db = {
-  ref: (path) => {
-    if (!mockStorage[path]) {
-      mockStorage[path] = {
-        "id_1": { nome: "Leonardo Carvalho", cargo: "Desenvolvedor", email: "leo@puc.br", matricula: "961544" }
-      };
-    }
-
-    // Função interna para forçar o refresh visual imediato na tela
-    const forceRefresh = (basePath) => {
-      if (listeners[basePath]) {
-        listeners[basePath]({
-          val: () => mockStorage[basePath] || {},
-          forEach: (childCallback) => {
-            const currentData = mockStorage[basePath] || {};
-            Object.keys(currentData).forEach((key) => {
-              childCallback({
-                key: key,
-                val: () => currentData[key]
-              });
-            });
-          }
-        });
-      }
-    };
-
-    return {
-      on: (event, callback) => {
-        listeners[path] = callback;
-        
-        const triggerUpdate = () => {
-          const currentData = mockStorage[path] || {};
-          callback({
-            val: () => currentData,
-            forEach: (childCallback) => {
-              Object.keys(currentData).forEach((key) => {
-                childCallback({
-                  key: key,
-                  val: () => currentData[key]
-                });
-              });
-            }
-          });
-        };
-        
-        triggerUpdate();
-      },
-      push: (data) => {
-        const id = "id_" + Math.random().toString(36).substring(7);
-        mockStorage[path][id] = data;
-        forceRefresh(path);
-        return Promise.resolve();
-      },
-      update: (data) => {
-        const parts = path.split('/');
-        if (parts.length > 1) {
-          const basePath = parts[0];
-          const id = parts[1];
-          if (mockStorage[basePath] && mockStorage[basePath][id]) {
-            mockStorage[basePath][id] = { ...mockStorage[basePath][id], ...data };
-            forceRefresh(basePath);
-          }
-        }
-        return Promise.resolve();
-      },
-      set: (data) => {
-        const parts = path.split('/');
-        if (parts.length > 1 && data === null) {
-          const basePath = parts[0];
-          const id = parts[1];
-          if (mockStorage[basePath]) {
-            delete mockStorage[basePath][id];
-            forceRefresh(basePath); // 🔥 Avisa a tela de listagem na mesma hora!
-          }
-        }
-        return Promise.resolve();
-      },
-      remove: () => {
-        const parts = path.split('/');
-        if (parts.length > 1) {
-          const basePath = parts[0];
-          const id = parts[1];
-          if (mockStorage[basePath]) {
-            delete mockStorage[basePath][id];
-            forceRefresh(basePath); // 🔥 Avisa a tela de listagem na mesma hora!
-          }
-        }
-        return Promise.resolve();
-      }
-    };
-  }
+// Credenciais do projeto Firebase (avalia-plus-mobile)
+const firebaseConfig = {
+  apiKey: "AIzaSyAJ_jDvm02ppjFmloAEW7eJFXO62UCKPZk",
+  authDomain: "avalia-plus-mobile.firebaseapp.com",
+  projectId: "avalia-plus-mobile",
+  storageBucket: "avalia-plus-mobile.firebasestorage.app",
+  messagingSenderId: "1090267567734",
+  appId: "1:1090267567734:web:1a61f0b43cd8e8a73ef157",
 };
 
-export const auth = {
-  signInWithEmailAndPassword: (email, password) => Promise.resolve({ user: { email } }),
-  createUserWithEmailAndPassword: (email, password) => Promise.resolve({ user: { email } }),
-  signOut: () => Promise.resolve(),
-  currentUser: { email: 'professor@pucminas.br' }
-};
+const app = initializeApp(firebaseConfig);
 
-const firebaseMock = {
-  auth: () => auth,
-  database: () => db,
-};
+// No nativo (Android/iOS via Expo Go), o Auth precisa de uma persistência
+// explícita baseada em AsyncStorage. Sem isso o SDK não consegue manter a
+// sessão e o fluxo de login/cadastro falha silenciosamente no app nativo,
+// mesmo funcionando no preview web (que usa localStorage do navegador).
+export const auth =
+  Platform.OS === 'web'
+    ? getAuth(app)
+    : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
 
-export { firebaseMock as default };
+export const db = getFirestore(app);
+export default app;
 

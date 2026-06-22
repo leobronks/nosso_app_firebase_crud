@@ -1,89 +1,95 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Text } from 'react-native';
-import { Card, Title, Paragraph, ActivityIndicator } from 'react-native-paper';
-import { auth, db } from '../config/firebase';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export default function AlunoListScreen({ navigation }) {
-  const [colaboradores, setColaboradores] = useState([]);
+  const [alunos, setAlunos] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const carregarColaboradores = () => {
+  const carregarAlunos = async () => {
     setLoading(true);
     try {
-      const colaboradoresRef = db.ref('alunos'); 
-      colaboradoresRef.on('value', (snapshot) => {
-        const colaboradoresData = [];
-        snapshot.forEach((childSnapshot) => {
-          colaboradoresData.push({
-            id: childSnapshot.key,
-            ...childSnapshot.val()
-          });
-        });
-        setColaboradores(colaboradoresData);
-        setLoading(false);
+      const querySnapshot = await getDocs(collection(db, 'alunos'));
+      const alunosData = [];
+      querySnapshot.forEach((docSnap) => {
+        alunosData.push({ id: docSnap.id, ...docSnap.data() });
       });
+      setAlunos(alunosData);
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao carregar colaboradores: ' + error.message);
+      Alert.alert('Erro', 'Erro ao carregar alunos: ' + error.message);
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    carregarColaboradores();
-    return () => db.ref('alunos').off();
-  }, []);
+    carregarAlunos();
+    const unsubscribe = navigation.addListener('focus', () => {
+      carregarAlunos();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
-  const excluirColaborador = (id, nome) => {
-    const confirmar = confirm(`Deseja mesmo excluir o colaborador ${nome}?`);
-    if (confirmar) {
-      try {
-        db.ref(`alunos/${id}`).remove();
-        alert('Colaborador removido com sucesso!');
-      } catch (error) {
-        alert('Erro ao remover: ' + error.message);
-      }
-    }
+  const excluirAluno = (id, nome) => {
+    Alert.alert(
+      'Confirmar exclusão',
+      `Deseja mesmo excluir o aluno ${nome}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'alunos', id));
+              await carregarAlunos();
+              Alert.alert('Sucesso', 'Aluno removido com sucesso!');
+            } catch (error) {
+              Alert.alert('Erro', 'Erro ao remover: ' + error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
-    // 🔲 Forçamos a View principal a ocupar estritamente 100% da altura da tela do navegador
     <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={true}
       >
         {loading ? (
           <ActivityIndicator size="large" style={{ marginTop: 30 }} color="#0b3168" />
-        ) : colaboradores.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum colaborador cadastrado.</Text>
+        ) : alunos.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhum aluno cadastrado.</Text>
         ) : (
-          colaboradores.map((colaborador) => (
-            <Card key={colaborador.id} style={styles.card}>
-              {/* 🔍 Reduzido o padding interno do card para achatar o retângulo */}
-              <Card.Content style={styles.cardContent}>
-                <Title style={styles.cardTitle}>{colaborador.nome}</Title>
-                
-                <Paragraph style={styles.cardText}>Identificação/Matrícula: {colaborador.matricula}</Paragraph>
-                <Paragraph style={styles.cardText}>Setor/Curso: {colaborador.curso}</Paragraph>
-                
-                <View style={styles.actions}>
-                  <TouchableOpacity 
-                    style={styles.btnEditar} 
-                    onPress={() => navigation.navigate('AlunoForm', { aluno: colaborador })}
-                  >
-                    <Text style={styles.btnTextEditar}>✏️ Editar</Text>
-                  </TouchableOpacity>
+          alunos.map((aluno) => (
+            <View key={aluno.id} style={styles.card}>
+              <Text style={styles.cardTitle}>{aluno.nome}</Text>
 
-                  <TouchableOpacity 
-                    style={styles.btnExcluir} 
-                    onPress={() => excluirColaborador(colaborador.id, colaborador.nome)}
-                  >
-                    <Text style={styles.btnTextExcluir}>🗑️ Excluir</Text>
-                  </TouchableOpacity>
-                </View>
-              </Card.Content>
-            </Card>
+              <Text style={styles.cardText}>Matrícula: {aluno.matricula}</Text>
+              <Text style={styles.cardText}>Curso: {aluno.curso}</Text>
+              <Text style={styles.cardText}>Período: {aluno.periodo}</Text>
+
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.btnEditar}
+                  onPress={() => navigation.navigate('AlunoForm', { aluno })}
+                >
+                  <Text style={styles.btnTextEditar}>Editar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.btnExcluir}
+                  onPress={() => excluirAluno(aluno.id, aluno.nome)}
+                >
+                  <Text style={styles.btnTextExcluir}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ))
         )}
       </ScrollView>
@@ -92,8 +98,8 @@ export default function AlunoListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    position: 'absolute', // Força o travamento nas dimensões do F12
+  container: {
+    position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
@@ -102,46 +108,43 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    // @ts-ignore: Propriedade para garantir que os navegadores Web liberem a rolagem do mouse
-    overflowY: 'scroll', 
+    overflowY: 'scroll',
   },
-  contentContainer: { 
+  contentContainer: {
     padding: 12,
-    paddingBottom: 60 // Espaço de folga reforçado no fim da página
+    paddingBottom: 60,
   },
-  card: { 
-    marginBottom: 10, // Menos espaço entre os cards
-    backgroundColor: '#4a5568', 
+  card: {
+    marginBottom: 10,
+    backgroundColor: '#4a5568',
     borderRadius: 10,
     elevation: 2,
-  },
-  cardContent: {
-    paddingHorizontal: 12, // Padding reduzido nas laterais
-    paddingVertical: 8,    // Padding reduzido verticalmente para achatar o retângulo cinza
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   cardTitle: {
     color: '#ffffff',
     fontWeight: 'bold',
-    fontSize: 18, // Letra do nome menor e mais discreta
+    fontSize: 18,
     lineHeight: 22,
   },
   cardText: {
     color: '#e2e8f0',
-    fontSize: 13, // Reduzido o texto dos dados de 15 para 13
-    marginTop: 1, // Colado no título
+    fontSize: 13,
+    marginTop: 1,
   },
-  actions: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginTop: 10 // Aproximou os botões do texto
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
-  btnEditar: { 
-    flex: 1, 
-    height: 32, // Botão bem mais magro (era 38)
+  btnEditar: {
+    flex: 1,
+    height: 32,
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: '#ffffff',
-    borderRadius: 16, 
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 6,
@@ -151,11 +154,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 13,
   },
-  btnExcluir: { 
-    flex: 1, 
-    height: 32, // Botão bem mais magro (era 38)
-    backgroundColor: '#ff4d4d', 
-    borderRadius: 16, 
+  btnExcluir: {
+    flex: 1,
+    height: 32,
+    backgroundColor: '#ff4d4d',
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 6,
@@ -165,10 +168,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 13,
   },
-  emptyText: { 
-    textAlign: 'center', 
-    marginTop: 40, 
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 40,
     color: '#666',
-    fontSize: 16 
-  }
+    fontSize: 16,
+  },
 });
